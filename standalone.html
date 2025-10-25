@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Генетический алгоритм — кратчайший путь</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: "Roboto", "Segoe UI", sans-serif;
+      font-weight: 300;
+      background: radial-gradient(circle at top left, #1d3557 0%, #0b132b 100%);
+      color: #fff;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 30px 0;
+    }
+
+    a {
+      color: #8ecae6;
+    }
+
+    ul {
+      list-style: none;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    .app-all {
+      width: min(1180px, 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      padding: 0 20px;
+    }
+
+    .app-title {
+      font-size: clamp(24px, 3vw, 32px);
+      font-weight: 300;
+      text-align: center;
+    }
+
+    .route-displays {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 30px;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .generation-fittest,
+    .right-display {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    #canvas {
+      background: #fff;
+      width: 600px;
+      max-width: 90vw;
+      height: 500px;
+      border-radius: 6px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    #fittest {
+      background: #fff;
+      width: 300px;
+      height: 250px;
+      border-radius: 6px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    .canvas-label {
+      font-size: 20px;
+      font-weight: 400;
+    }
+
+    .run-info,
+    .instructions,
+    .background,
+    .algo-options {
+      background: rgba(3, 19, 43, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 6px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .run-metric-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 16px;
+      line-height: 22px;
+    }
+
+    .run-metric-label {
+      font-weight: 400;
+    }
+
+    .below-canvases {
+      display: flex;
+      flex-wrap: wrap;
+      width: 100%;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .params-title,
+    .instructions-label,
+    .background-title {
+      font-size: 20px;
+      font-weight: 400;
+      margin-bottom: 5px;
+    }
+
+    .param-item-container {
+      width: min(360px, 80vw);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 0;
+      flex-wrap: wrap;
+    }
+
+    .param-item-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .param-input {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .param-value-container {
+      min-width: 48px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      background: rgba(2, 25, 53, 0.9);
+      text-align: center;
+      font-size: 13px;
+    }
+
+    input[type="range"] {
+      width: 180px;
+    }
+
+    .control-buttons-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .control-buttons-container button {
+      font-size: 16px;
+      border-radius: 4px;
+      border: none;
+      padding: 8px 16px;
+      background: #457b9d;
+      color: #fff;
+      cursor: pointer;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    .control-buttons-container button:hover {
+      background: #1d3557;
+      transform: translateY(-1px);
+    }
+
+    .instructions ul {
+      list-style: disc;
+      padding-left: 20px;
+    }
+
+    .instructions li {
+      margin-bottom: 6px;
+    }
+
+    .background {
+      max-width: 1180px;
+    }
+
+    .background-paragraph {
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 960px) {
+      #canvas {
+        width: min(600px, 100%);
+      }
+
+      #fittest {
+        width: min(300px, 60vw);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-all">
+    <h1 class="app-title">Генетический алгоритм для задачи коммивояжёра</h1>
+
+    <div class="route-displays">
+      <div class="generation-fittest">
+        <h2 class="canvas-label">Лучший маршрут текущего поколения</h2>
+        <canvas width="600" height="500" id="canvas"></canvas>
+      </div>
+      <div class="right-display">
+        <div class="overall-fittest">
+          <h2 class="canvas-label">Лучший найденный маршрут</h2>
+          <canvas width="300" height="250" id="fittest"></canvas>
+        </div>
+        <div class="run-info">
+          <div class="run-metric-item">
+            <div class="run-metric-label">Начальная длина маршрута:</div>
+            <div id="starting-distance"></div>
+          </div>
+          <div class="run-metric-item">
+            <div class="run-metric-label">Минимальная длина:</div>
+            <div id="best-distance"></div>
+          </div>
+          <div class="run-metric-item">
+            <div class="run-metric-label">Число возможных маршрутов:</div>
+            <div id="total-possible-routes"></div>
+          </div>
+          <div class="run-metric-item">
+            <div class="run-metric-label">Поколение:</div>
+            <div id="current-generation"></div>
+          </div>
+          <div class="run-metric-item">
+            <div class="run-metric-label">Индивидов проверено:</div>
+            <div id="individuals-screened"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="below-canvases">
+      <div class="controls">
+        <div class="algo-options">
+          <h2 class="params-title">Параметры алгоритма</h2>
+          <div class="param-item-container">
+            <div class="param-item-label">Размер популяции</div>
+            <div class="param-input">
+              <input id="popsize-slider" type="range" min="50" max="2000" step="25" value="500">
+              <div class="param-value-container"><span class="param-value" id="popsize-label"></span></div>
+            </div>
+          </div>
+          <div class="param-item-container">
+            <div class="param-item-label">Скорость мутаций</div>
+            <div class="param-input">
+              <input id="mutation-slider" type="range" min="0" max="1" step="0.01" value="0.05">
+              <div class="param-value-container"><span class="param-value" id="mutation-label"></span></div>
+            </div>
+          </div>
+          <div class="param-item-container">
+            <div class="param-item-label">Скорость кроссовера</div>
+            <div class="param-input">
+              <input id="cross-slider" type="range" min="0" max="1" step="0.01" value="0.3">
+              <div class="param-value-container"><span class="param-value" id="cross-label"></span></div>
+            </div>
+          </div>
+          <div class="param-item-container">
+            <div class="param-item-label">Элитарность</div>
+            <div class="param-input">
+              <input id="elitism-slider" type="range" min="0" max="1" step="0.01" value="0">
+              <div class="param-value-container"><span class="param-value" id="elitism-label"></span></div>
+            </div>
+          </div>
+          <p class="algo-options-explanation">
+            Нажмите «Старт», чтобы наблюдать за поиском кратчайшего маршрута. Для собственных точек очистите полотно кнопкой «Очистить»,
+            а затем добавляйте точки кликами мыши.
+          </p>
+        </div>
+        <div class="control-buttons-container">
+          <button id="start">Старт / Продолжить</button>
+          <button id="stop">Пауза</button>
+          <button id="reset">Сброс</button>
+          <button id="clear">Очистить</button>
+        </div>
+      </div>
+      <div class="instructions">
+        <h2 class="instructions-label">Инструкция</h2>
+        <ul>
+          <li>Старт запускает генетический алгоритм для текущего набора точек.</li>
+          <li>Меняйте параметры алгоритма с помощью ползунков. Для применения потребуется сброс.</li>
+          <li>Кнопка «Очистить» удаляет текущие точки; далее щёлкайте по полю, чтобы добавить собственные.</li>
+          <li>Миниатюрное поле справа показывает лучший маршрут за всё время работы алгоритма.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="background">
+      <h2 class="background-title">О задаче</h2>
+      <div class="background-paragraph">
+        Задача коммивояжёра ищет кратчайший маршрут, проходящий через все заданные точки и возвращающийся в исходную.
+        В лоб она решается полным перебором, сложность которого растёт как факториал числа точек и быстро становится неподъёмной.
+      </div>
+      <div class="background-paragraph">
+        Генетические алгоритмы имитируют эволюцию: популяция возможных решений подвергается отбору, скрещиванию и мутациям,
+        а наиболее приспособленные особи выживают. Со временем популяция сходится к хорошему решению.
+      </div>
+      <div class="background-paragraph">
+        На этой странице показано, как генетический алгоритм может приблизиться к решению задачи коммивояжёра.
+        Каждое поколение создаёт новых кандидатов, и мы наблюдаем, как расстояние постепенно сокращается.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function factorial(num) {
+      if (num <= 1) return 1;
+      let result = 1;
+      for (let i = 2; i <= num; i += 1) {
+        result *= i;
+      }
+      return result;
+    }
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function drawPoints(ctx, genes, scale = 1) {
+      const pxSize = scale === 1 ? 5 : 2;
+      const offset = pxSize / 2;
+      genes.forEach((gene) => {
+        ctx.fillRect(gene[0] * scale - offset, gene[1] * scale - offset, pxSize, pxSize);
+      });
+    }
+
+    function drawPath(ctx, genes, scale = 1) {
+      if (genes.length === 0) return;
+      ctx.beginPath();
+      genes.forEach((gene, idx) => {
+        const x = gene[0] * scale;
+        const y = gene[1] * scale;
+        if (idx === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    function clearCanvas(canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    class Individual {
+      constructor(mutProb, ...coordinates) {
+        this.mutProb = mutProb;
+        this.chromosome = coordinates.slice();
+        this.calculateFitness();
+      }
+
+      calculateFitness() {
+        let sumDist = 0;
+        for (let i = 0; i < this.chromosome.length - 1; i += 1) {
+          sumDist += Individual.distance(this.chromosome[i], this.chromosome[i + 1]);
+        }
+        if (this.chromosome.length > 1) {
+          sumDist += Individual.distance(this.chromosome[0], this.chromosome[this.chromosome.length - 1]);
+        }
+        this.distance = sumDist;
+        this.fitness = sumDist === 0 ? 0 : 1 / sumDist;
+        return this.fitness;
+      }
+
+      mutate() {
+        if (this.chromosome.length < 2) return this.chromosome;
+        if (Math.random() < this.mutProb) {
+          let idx1 = Math.floor(Math.random() * this.chromosome.length);
+          let idx2 = Math.floor(Math.random() * this.chromosome.length);
+          while (idx1 === idx2) {
+            idx2 = Math.floor(Math.random() * this.chromosome.length);
+          }
+          [this.chromosome[idx1], this.chromosome[idx2]] = [this.chromosome[idx2], this.chromosome[idx1]];
+        }
+        this.calculateFitness();
+        return this.chromosome;
+      }
+
+      mate(crossProb, mutProb, otherInd) {
+        if (this.chromosome.length < 2) {
+          return [new Individual(mutProb, ...this.chromosome), new Individual(mutProb, ...otherInd.chromosome)];
+        }
+        if (Math.random() < crossProb) {
+          const children = [];
+          while (children.length < 2) {
+            let idx1 = Math.floor(Math.random() * this.chromosome.length);
+            while (idx1 >= this.chromosome.length - 1) {
+              idx1 = Math.floor(Math.random() * this.chromosome.length);
+            }
+            const idx2 = idx1 + Math.ceil(Math.random() * (this.chromosome.length - idx1));
+            const childChromosome = new Array(this.chromosome.length);
+            for (let i = idx1; i < idx2; i += 1) {
+              childChromosome[i] = this.chromosome[i];
+            }
+            const reorderedSecondParent = [];
+            for (let i = 0; i < this.chromosome.length; i += 1) {
+              reorderedSecondParent[i] = otherInd.chromosome[(idx2 + i) % this.chromosome.length];
+            }
+            let childIdx = idx2;
+            reorderedSecondParent.forEach((gene) => {
+              if (!childChromosome.some((slot) => slot && slot[0] === gene[0] && slot[1] === gene[1])) {
+                childChromosome[childIdx % this.chromosome.length] = gene;
+                childIdx += 1;
+              }
+            });
+            const child = new Individual(mutProb, ...childChromosome);
+            child.mutate(mutProb);
+            children.push(child);
+          }
+          return children;
+        }
+        const firstParentClone = new Individual(mutProb, ...this.chromosome);
+        const secondParentClone = new Individual(mutProb, ...otherInd.chromosome);
+        firstParentClone.mutate(mutProb);
+        secondParentClone.mutate(mutProb);
+        return [firstParentClone, secondParentClone];
+      }
+
+      static distance(point1, point2) {
+        const dx = point1[0] - point2[0];
+        const dy = point1[1] - point2[1];
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+    }
+
+    class Population {
+      constructor(popSize, crossProb, mutProb, elitismRate, ...coordinates) {
+        this.coordinates = coordinates;
+        this.popSize = Math.max(1, Math.floor(popSize));
+        this.crossProb = crossProb;
+        this.mutProb = mutProb;
+        this.elitismRate = elitismRate;
+        this.currentGen = [];
+        this.genNumber = 0;
+        this.totalFitness = 0;
+        this.numPossibleRoutes = factorial(coordinates.length);
+
+        for (let i = 0; i < this.popSize; i += 1) {
+          const chromosome = shuffle(coordinates.slice());
+          const individual = new Individual(mutProb, ...chromosome);
+          this.currentGen.push(individual);
+        }
+        this.updateTotalFitness();
+        this.fittestEver = this.getFittest();
+      }
+
+      updateTotalFitness() {
+        this.totalFitness = this.currentGen.reduce((acc, individual) => acc + individual.fitness, 0);
+      }
+
+      createNextGen() {
+        let nextGen = [];
+        if (this.elitismRate > 0) {
+          nextGen = nextGen.concat(this.passElites());
+        }
+        const matingPool = this.currentGen.slice();
+        let pendingParent = null;
+        while (nextGen.length < this.popSize) {
+          const fitnessThreshold = Math.random() * this.totalFitness;
+          let currentFitness = 0;
+          shuffle(matingPool);
+          for (let i = 0; i < matingPool.length; i += 1) {
+            currentFitness += matingPool[i].fitness;
+            if (currentFitness >= fitnessThreshold) {
+              if (pendingParent === null) {
+                pendingParent = matingPool[i];
+              } else {
+                const children = pendingParent.mate(this.crossProb, this.mutProb, matingPool[i]);
+                nextGen = nextGen.concat(children);
+                pendingParent = null;
+              }
+              break;
+            }
+          }
+          if (pendingParent !== null && matingPool.length === 1) {
+            nextGen = nextGen.concat(pendingParent.mate(this.crossProb, this.mutProb, matingPool[0]));
+            pendingParent = null;
+          }
+        }
+        if (pendingParent !== null) {
+          nextGen.push(pendingParent);
+        }
+        if (nextGen.length > this.popSize) {
+          nextGen = nextGen.slice(0, this.popSize);
+        }
+        this.currentGen = nextGen;
+        this.genNumber += 1;
+        this.updateTotalFitness();
+        const genFittest = this.getFittest();
+        if (!this.fittestEver || genFittest.fitness > this.fittestEver.fitness) {
+          this.fittestEver = genFittest;
+        }
+      }
+
+      passElites() {
+        const sorted = this.currentGen.slice().sort((a, b) => b.fitness - a.fitness);
+        const numElites = Math.floor(this.elitismRate * this.popSize);
+        if (numElites <= 0) {
+          return [];
+        }
+        return sorted.slice(0, Math.min(numElites, this.popSize));
+      }
+
+      getFittest() {
+        return this.currentGen.reduce((best, individual) => (individual.fitness > best.fitness ? individual : best), this.currentGen[0]);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      const fittestCanvas = document.getElementById('fittest');
+      const fittestCtx = fittestCanvas.getContext('2d');
+
+      const startBtn = document.getElementById('start');
+      const stopBtn = document.getElementById('stop');
+      const resetBtn = document.getElementById('reset');
+      const clearBtn = document.getElementById('clear');
+
+      const popSizeSlider = document.getElementById('popsize-slider');
+      const mutationSlider = document.getElementById('mutation-slider');
+      const crossSlider = document.getElementById('cross-slider');
+      const elitismSlider = document.getElementById('elitism-slider');
+
+      const popSizeLabel = document.getElementById('popsize-label');
+      const mutationLabel = document.getElementById('mutation-label');
+      const crossLabel = document.getElementById('cross-label');
+      const elitismLabel = document.getElementById('elitism-label');
+
+      const totalRoutesDisplay = document.getElementById('total-possible-routes');
+      const generationDisplay = document.getElementById('current-generation');
+      const screenedDisplay = document.getElementById('individuals-screened');
+      const startDistanceDisplay = document.getElementById('starting-distance');
+      const bestDistanceDisplay = document.getElementById('best-distance');
+
+      let coordinates = [
+        [407.8377416386715, 418.07147742662283],
+        [360.5979273594664, 440.3050970991086],
+        [309.2132865052777, 449.55456093008706],
+        [257.1855974331843, 445.1895332449387],
+        [208.060461173628, 427.507483466857],
+        [165.18567457957127, 397.71341406724946],
+        [131.48308350346423, 357.8377416386715],
+        [109.24946383097844, 310.59792735946644],
+        [100, 259.2132865052777],
+        [104.36502768514839, 207.1855974331843],
+        [122.04707746323004, 158.06046117362803],
+        [151.84114686283763, 115.18567457957127],
+        [191.71681929141556, 81.48308350346423],
+        [238.95663357062062, 59.24946383097847],
+        [290.3412744248092, 50],
+        [342.36896349690255, 54.36502768514836],
+        [391.49409975645904, 72.04707746323004],
+        [434.3688863505157, 101.84114686283758],
+        [468.0714774266228, 141.71681929141556],
+        [490.3050970991086, 188.9566335706206],
+        [499.55456093008706, 240.34127442480923],
+        [495.1895332449387, 292.3689634969027],
+        [477.507483466857, 341.49409975645904],
+        [447.71341406724946, 384.3688863505157]
+      ];
+
+      let population = null;
+      let evolveInterval = null;
+
+      function updateParameterLabels() {
+        popSizeLabel.textContent = Number(popSizeSlider.value).toLocaleString('ru-RU');
+        mutationLabel.textContent = Number(mutationSlider.value).toFixed(2);
+        crossLabel.textContent = Number(crossSlider.value).toFixed(2);
+        elitismLabel.textContent = Number(elitismSlider.value).toFixed(2);
+      }
+
+      function updateRouteCount() {
+        if (coordinates.length <= 1) {
+          totalRoutesDisplay.textContent = '0';
+          return;
+        }
+        const uniqueRoutes = Math.ceil(factorial(coordinates.length - 1) / 2);
+        totalRoutesDisplay.textContent = uniqueRoutes.toLocaleString('ru-RU');
+      }
+
+      function renderCurrent(individual) {
+        clearCanvas(canvas);
+        drawPoints(ctx, coordinates, 1);
+        if (individual && individual.chromosome) {
+          drawPath(ctx, individual.chromosome, 1);
+        }
+      }
+
+      function renderBest(bestIndividual) {
+        fittestCtx.clearRect(0, 0, fittestCanvas.width, fittestCanvas.height);
+        if (!bestIndividual) return;
+        drawPoints(fittestCtx, bestIndividual.chromosome, 0.5);
+        drawPath(fittestCtx, bestIndividual.chromosome, 0.5);
+      }
+
+      function resetDisplays() {
+        generationDisplay.textContent = '0';
+        screenedDisplay.textContent = '0';
+        startDistanceDisplay.textContent = '';
+        bestDistanceDisplay.textContent = '';
+      }
+
+      function initializePopulation() {
+        if (coordinates.length < 2) {
+          population = null;
+          startDistanceDisplay.textContent = '';
+          bestDistanceDisplay.textContent = '';
+          return;
+        }
+        population = new Population(
+          Number(popSizeSlider.value),
+          Number(crossSlider.value),
+          Number(mutationSlider.value),
+          Number(elitismSlider.value),
+          ...coordinates
+        );
+        generationDisplay.textContent = population.genNumber.toString();
+        screenedDisplay.textContent = (population.genNumber * population.popSize).toLocaleString('ru-RU');
+        if (population.currentGen.length > 0) {
+          startDistanceDisplay.textContent = Math.round(population.getFittest().distance).toLocaleString('ru-RU');
+          bestDistanceDisplay.textContent = Math.round(population.fittestEver.distance).toLocaleString('ru-RU');
+        }
+        renderCurrent(population.getFittest());
+        renderBest(population.fittestEver);
+      }
+
+      function beginEvolution() {
+        if (coordinates.length < 2) return;
+        if (!population) {
+          initializePopulation();
+        }
+        if (evolveInterval) return;
+        startDistanceDisplay.textContent = Math.round(population.getFittest().distance).toLocaleString('ru-RU');
+        bestDistanceDisplay.textContent = Math.round(population.fittestEver.distance).toLocaleString('ru-RU');
+        evolveInterval = setInterval(() => {
+          population.createNextGen();
+          const current = population.getFittest();
+          renderCurrent(current);
+          generationDisplay.textContent = population.genNumber.toString();
+          screenedDisplay.textContent = (population.genNumber * population.popSize).toLocaleString('ru-RU');
+          if (!population.fittestEver || current.fitness > population.fittestEver.fitness) {
+            population.fittestEver = current;
+          }
+          bestDistanceDisplay.textContent = Math.round(population.fittestEver.distance).toLocaleString('ru-RU');
+          renderBest(population.fittestEver);
+        }, 100);
+      }
+
+      function stopEvolution() {
+        if (evolveInterval) {
+          clearInterval(evolveInterval);
+          evolveInterval = null;
+        }
+      }
+
+      function resetPopulation() {
+        stopEvolution();
+        population = null;
+        initializePopulation();
+        generationDisplay.textContent = '0';
+        screenedDisplay.textContent = '0';
+        if (population) {
+          startDistanceDisplay.textContent = Math.round(population.getFittest().distance).toLocaleString('ru-RU');
+          bestDistanceDisplay.textContent = Math.round(population.fittestEver.distance).toLocaleString('ru-RU');
+        } else {
+          startDistanceDisplay.textContent = '';
+          bestDistanceDisplay.textContent = '';
+        }
+      }
+
+      function clearAll() {
+        stopEvolution();
+        population = null;
+        coordinates = [];
+        clearCanvas(canvas);
+        fittestCtx.clearRect(0, 0, fittestCanvas.width, fittestCanvas.height);
+        updateRouteCount();
+        resetDisplays();
+      }
+
+      canvas.addEventListener('click', (event) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        coordinates.push([x, y]);
+        const pxSize = 5;
+        const offset = pxSize / 2;
+        ctx.fillRect(x - offset, y - offset, pxSize, pxSize);
+        updateRouteCount();
+      });
+
+      popSizeSlider.addEventListener('input', () => {
+        updateParameterLabels();
+      });
+
+      mutationSlider.addEventListener('input', () => {
+        updateParameterLabels();
+      });
+
+      crossSlider.addEventListener('input', () => {
+        updateParameterLabels();
+      });
+
+      elitismSlider.addEventListener('input', () => {
+        updateParameterLabels();
+      });
+
+      startBtn.addEventListener('click', beginEvolution);
+      stopBtn.addEventListener('click', stopEvolution);
+      resetBtn.addEventListener('click', resetPopulation);
+      clearBtn.addEventListener('click', clearAll);
+
+      updateParameterLabels();
+      updateRouteCount();
+      renderCurrent(null);
+    });
+  </script>
+</body>
+</html>
